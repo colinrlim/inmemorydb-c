@@ -27,10 +27,6 @@
     AC_T(target, capacity)     = AC_S(src, capacity);       \
     AC_T(target, size)         = AC_S(src, size);           \
 
-#define _ALLOC_KV(target, cap, AC)                              \
-    AC(target, keys)    = calloc((cap), sizeof(const char*));   \
-    AC(target, values)  = malloc((cap) * sizeof(int));          \
-
 #define _FREE_KV(target, AC)        \
     do {                            \
         free(AC(target, keys));     \
@@ -43,10 +39,15 @@
         AC(target, values)  = NULL; \
     } while(0)                      \
 
-#define _ALLOC_HKV(target, cap, AC)                                 \
+// Atomic Alloc: If ANY alloc fails, use existing macros to cleanup
+#define _ALLOC_KV(target, cap, AC)                                  \
     do {                                                            \
-        AC(target, hash_entries) = malloc((cap) * sizeof(size_t));  \
-        _ALLOC_KV(target, cap, AC)                                  \
+        AC(target, keys)    = calloc((cap), sizeof(const char*));   \
+        AC(target, values)  = malloc((cap) * sizeof(int));          \
+        if (!AC(target, keys) || !AC(target, values)) {             \
+            _FREE_KV(target, AC);                                   \
+            _NULL_KV(target, AC);                                   \
+        }                                                           \
     } while(0)                                                      \
 
 #define _FREE_HKV(target, AC)           \
@@ -55,14 +56,36 @@
         _FREE_KV(target, AC);           \
     } while(0)                          \
 
+#define _NULL_HKV(target, AC)               \
+    do {                                    \
+        AC(target, hash_entries) = NULL;    \
+        _NULL_KV(target, AC);               \
+    } while(0)                              \
+
+// Atomic Hash Alloc: Uses _FREE_HKV and _NULL_HKV on failure
+#define _ALLOC_HKV(target, cap, AC)                                 \
+    do {                                                            \
+        AC(target, hash_entries) = malloc((cap) * sizeof(size_t));  \
+        _ALLOC_KV(target, cap, AC);                                 \
+        if (!AC(target, keys) || !AC(target, hash_entries)) {       \
+            _FREE_HKV(target, AC);                                  \
+            _NULL_HKV(target, AC);                                  \
+        }                                                           \
+    } while(0)                                                      \
+
+// Saves both realloc results to temps. Only updates struct if BOTH succeed.
+// Handles partial success by updating keys if values fail.
 #define _RESIZE_KV(target, AC, err_code)                                                \
     do {                                                                                \
         size_t _nc              = AC(target, capacity) * 2;                             \
         const char** _nk        = realloc(AC(target, keys), _nc * sizeof(const char*)); \
         if (!_nk) return err_code;                                                      \
-        AC(target, keys)        = _nk;                                                  \
         int* _nv                = realloc(AC(target, values), _nc * sizeof(int));       \
-        if (!_nv) return err_code;                                                      \
+        if (!_nv) {                                                                     \
+             AC(target, keys) = _nk;                                                    \
+             return err_code;                                                           \
+        }                                                                               \
+        AC(target, keys)        = _nk;                                                  \
         AC(target, values)      = _nv;                                                  \
         AC(target, capacity)    = _nc;                                                  \
     } while(0)                                                                          \
