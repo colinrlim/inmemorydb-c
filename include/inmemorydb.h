@@ -3,13 +3,28 @@
 
 #include <stddef.h>
 
+typedef struct inmemorydb_state {
+    const char**    keys;
+    int*            values;
+    size_t          size;
+    size_t          capacity;
+} inmemorydb_state;
+
 typedef struct inmemorydb {
-    struct transaction {
+    struct {
         const char**    keys;
         int*            values;
         size_t          size;
         size_t          capacity;
     } transaction;
+
+    struct {
+        size_t*         hash_entries;
+        const char**    keys;
+        int*            values;
+        size_t          size;
+        size_t          capacity;
+    } committed;
 } inmemorydb;
 
 /**
