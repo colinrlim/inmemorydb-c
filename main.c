@@ -103,6 +103,8 @@ int main() {
     printf("\n");
     
     printf("=== All tests complete ===\n");
+
+    inmemorydb_destroy(&db);
     
     return 0;
 }

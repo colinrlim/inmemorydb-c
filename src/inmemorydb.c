@@ -31,21 +31,29 @@
     AC(target, keys)    = calloc((cap), sizeof(const char*));   \
     AC(target, values)  = malloc((cap) * sizeof(int));          \
 
-#define _FREE_KV(target, AC)    \
-    free(AC(target, keys));     \
-    free(AC(target, values));   \
+#define _FREE_KV(target, AC)        \
+    do {                            \
+        free(AC(target, keys));     \
+        free(AC(target, values));   \
+    } while(0)                      \
 
-#define _NULL_KV(target, AC)    \
-    AC(target, keys)    = NULL; \
-    AC(target, values)  = NULL; \
+#define _NULL_KV(target, AC)        \
+    do {                            \
+        AC(target, keys)    = NULL; \
+        AC(target, values)  = NULL; \
+    } while(0)                      \
 
-#define _ALLOC_HKV(target, cap, AC)                             \
-    AC(target, hash_entries) = malloc((cap) * sizeof(size_t));  \
-    _ALLOC_KV(target, cap, AC)                                  \
+#define _ALLOC_HKV(target, cap, AC)                                 \
+    do {                                                            \
+        AC(target, hash_entries) = malloc((cap) * sizeof(size_t));  \
+        _ALLOC_KV(target, cap, AC)                                  \
+    } while(0)                                                      \
 
-#define _FREE_HKV(target, AC)       \
-    free(AC(target, hash_entries)); \
-    _FREE_KV(target, AC)            \
+#define _FREE_HKV(target, AC)           \
+    do {                                \
+        free(AC(target, hash_entries)); \
+        _FREE_KV(target, AC);           \
+    } while(0)                          \
 
 #define _RESIZE_KV(target, AC, err_code)                                                \
     do {                                                                                \
@@ -214,4 +222,13 @@ int inmemorydb_rollback(inmemorydb* db) {
     INMEMORYDB_ACTIVE_TRANSACTION_REQUIRED
     inmemorydb_end_transaction(db);
     return INMEMORYDB_OK;
+}
+
+void inmemorydb_destroy(inmemorydb* db) {
+    if (db->committed.keys)
+        INMEMORYDB_TABLE_FREE(db->committed);
+    if (db->transaction.keys)
+        INMEMORYDB_TXN_FREE(db->transaction);
+    
+    *db = (inmemorydb){0};
 }

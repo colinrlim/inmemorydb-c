@@ -129,4 +129,18 @@ int inmemorydb_commit(inmemorydb* db);
  */
 int inmemorydb_rollback(inmemorydb* db);
 
+/**
+ * Destroys the database and frees all internal memory.
+ * 
+ * Frees all memory allocated for the committed state and any active transaction.
+ * After calling this function, the database is empty and can be reused by calling
+ * begin_transaction() again.
+ * 
+ * @param db Pointer to the database instance
+ * 
+ * @note This does NOT free the keys themselves - the caller is still responsible
+ *       for freeing any key strings they allocated.
+ */
+void inmemorydb_destroy(inmemorydb* db);
+
 #endif // INMEMORYDB_H
