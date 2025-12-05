@@ -120,7 +120,7 @@ static inline size_t __attribute__((always_inline)) inmemorydb_hash_insert(
 
 
 
-const int* inmemorydb_get(const inmemorydb* db, const char* key) { // TODO
+const int* inmemorydb_get(const inmemorydb* db, const char* key) {
     if (!db->committed.keys || db->committed.capacity == 0) return NULL;
 
     size_t hash         = inmemorydb_hash(key);
@@ -161,7 +161,7 @@ int inmemorydb_begin_transaction(inmemorydb* db) {
     return 0;
 }
 
-int inmemorydb_commit(inmemorydb* db) { // TODO
+int inmemorydb_commit(inmemorydb* db) {
     INMEMORYDB_ACTIVE_TRANSACTION_REQUIRED
     size_t required_size    = db->committed.size + db->transaction.size;
     size_t new_capacity     = !db->committed.capacity ? 16 : db->committed.capacity;
