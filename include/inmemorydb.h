@@ -3,6 +3,14 @@
 
 #include <stddef.h>
 
+typedef enum {
+    INMEMORYDB_OK               = 0,    // Success
+    INMEMORYDB_ERR_NO_TXN       = -1,   // No transaction active
+    INMEMORYDB_ERR_TXN_EXISTS   = -2,   // Transaction already exists
+    INMEMORYDB_ERR_NOMEM        = -3,   // Out of memory
+    INMEMORYDB_ERR_TOO_LARGE    = -4,   // Hash table capacity exceeds maximum size
+} inmemorydb_error;
+
 typedef struct inmemorydb_state {
     const char**    keys;
     int*            values;

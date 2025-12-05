@@ -1,13 +1,13 @@
 #include "inmemorydb.h"
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
+#include <stdint.h>
 
-#define INMEMORYDB_ACTIVE_TRANSACTION_REQUIRED      \
-        if (!db->transaction.keys) return -1;       \
+#define INMEMORYDB_ACTIVE_TRANSACTION_REQUIRED                      \
+        if (!db->transaction.keys) return INMEMORYDB_ERR_NO_TXN;    \
 
-#define INMEMORYDB_ACTIVE_TRANSACTION_NOT_ALLOWED   \
-        if (db->transaction.keys) return -1;        \
+#define INMEMORYDB_ACTIVE_TRANSACTION_NOT_ALLOWED                   \
+        if (db->transaction.keys) return INMEMORYDB_ERR_TXN_EXISTS; \
 
 /* --- MACRO PARENTS (THE ABSTRACTIONS) --- */
 
@@ -69,7 +69,7 @@
 #define INMEMORYDB_TXN_ALLOC(t, c)  _ALLOC_KV(t, c, M_DOT)
 #define INMEMORYDB_TXN_FREE(t)      _FREE_KV(t, M_DOT)
 #define INMEMORYDB_TXN_NULL(t)      _NULL_KV(t, M_DOT)
-#define INMEMORYDB_TXN_RESIZE(t)    _RESIZE_KV(t, M_DOT, -2)
+#define INMEMORYDB_TXN_RESIZE(t)    _RESIZE_KV(t, M_DOT, INMEMORYDB_ERR_NOMEM)
 
 // Table/Committed Helpers (Struct Access, Includes Hash)
 #define INMEMORYDB_TABLE_FREE(t)    _FREE_HKV(t, M_DOT)
@@ -97,7 +97,7 @@ static inline size_t __attribute__((always_inline)) inmemorydb_hash(
 
 // Returns 1 if a NEW key was inserted, 0 if an EXISTING key was updated
 static inline size_t __attribute__((always_inline)) inmemorydb_hash_insert(
-        size_t* hash_entries, const char** keys, int* values, size_t capacity,
+        size_t* hash_entries, const char** keys, int* values, const size_t capacity,
         const char* key, int val)   {
     size_t hash     = inmemorydb_hash(key);
     size_t index    = hash % capacity;
@@ -147,7 +147,7 @@ int inmemorydb_put(inmemorydb* db, const char* key, int val) {
     db->transaction.keys[db->transaction.size]      = key;
     db->transaction.values[db->transaction.size]    = val;
     db->transaction.size++;
-    return 0;
+    return INMEMORYDB_OK;
 }
 
 int inmemorydb_begin_transaction(inmemorydb* db) {
@@ -157,8 +157,8 @@ int inmemorydb_begin_transaction(inmemorydb* db) {
     
     INMEMORYDB_TXN_ALLOC(db->transaction, db->transaction.capacity);
     
-    if (!db->transaction.keys) return -2;
-    return 0;
+    if (!db->transaction.keys) return INMEMORYDB_ERR_NOMEM;
+    return INMEMORYDB_OK;
 }
 
 int inmemorydb_commit(inmemorydb* db) {
@@ -166,8 +166,11 @@ int inmemorydb_commit(inmemorydb* db) {
     size_t required_size    = db->committed.size + db->transaction.size;
     size_t new_capacity     = !db->committed.capacity ? 16 : db->committed.capacity;
     
-    while (new_capacity * 0.75 < required_size)
+    while (new_capacity * 0.75 < required_size) {
+        if (new_capacity > SIZE_MAX / 2)
+            return INMEMORYDB_ERR_TOO_LARGE;
         new_capacity *= 2;
+    }
 
     if (new_capacity > db->committed.capacity) {
         size_t          new_size            = 0;
@@ -176,7 +179,7 @@ int inmemorydb_commit(inmemorydb* db) {
         int*            new_values;
 
         INMEMORYDB_VAR_ALLOC(new_, new_capacity);
-        if (!new_keys) return -1;
+        if (!new_keys) return INMEMORYDB_ERR_NOMEM;
 
         // Rebuild hash table
         for (size_t i = 0; i < db->committed.capacity; i++) {
@@ -204,11 +207,11 @@ int inmemorydb_commit(inmemorydb* db) {
     }
 
     inmemorydb_end_transaction(db);
-    return 0;
+    return INMEMORYDB_OK;
 }
 
 int inmemorydb_rollback(inmemorydb* db) {
     INMEMORYDB_ACTIVE_TRANSACTION_REQUIRED
     inmemorydb_end_transaction(db);
-    return 0;
+    return INMEMORYDB_OK;
 }
