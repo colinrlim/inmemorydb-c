@@ -23,7 +23,7 @@ A simple in-memory key-value database implementation in C with transaction suppo
 
 Using GCC directly:
 ```bash
-gcc -o inmemorydb_test inmemorydb.c main.c -Wall -Wextra
+gcc -o inmemorydb_test src/inmemorydb.c main.c -Wall -Wextra -I./include
 ```
 
 Or using the provided Makefile:
