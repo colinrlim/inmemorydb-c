@@ -1,5 +1,9 @@
 # In-Memory Transactional Database
 
+**Course**: CIS 4930 - Enterprise Software Engineering Practices  
+**Assignment**: Data Processing and Storage Assignment  
+**Semester**: Fall 2025
+
 A simple in-memory key-value database implementation in C with transaction support.
 
 ## Features
